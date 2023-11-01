@@ -56,7 +56,7 @@ cap describe using "`c(sysdir_plus)'i/countrycodes.dta", short varl
 local ccodes_data_varl = r(varlist)
 if _rc | !strpos("`ccodes_data_varl'","version1") {
 	net set other `c(sysdir_plus)'i
-	net get countrycodes, from("https://raw.githubusercontent.com/leojahrens/countrycodes/master") replace
+	net get countrycodes, from("https://raw.githubusercontent.com/leojahrens/isocodes/master") replace
 }
 
 *-------------------------------------------------------------------------------
