@@ -1,0 +1,5 @@
+v 1.0
+d Leo Ahrens
+p countrycodes countrycodes
+f countrycodes.ado
+f countrycodes.dta
