@@ -1,11 +1,11 @@
-v 1.0
+v 1.1
 d isocodes. Matches standardized country codes
 d
 d Leo Ahrens, University of Konstanz
 d
 d Requires Stata 15 and the following packages: gtools
 d
-d Distribution-Date: 20231025
+d Distribution-Date: 20231209
 d Support: leo@ahrensmail.de
 f isocodes.ado 
 f isocodes.dta

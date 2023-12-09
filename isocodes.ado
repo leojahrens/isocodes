@@ -1,4 +1,4 @@
-*! version 1.0   Leo Ahrens   leo@ahrensmail.de
+*! version 1.1   Leo Ahrens   leo@ahrensmail.de
 
 program define isocodes
 
@@ -100,7 +100,7 @@ local __cname__ "`varlist'"
 foreach __cvar__ in `countrylist__' {
 	if "`__cvar__'"!="`gen'" {
 		rename `__cname__' `__cvar__'
-		merge 1:m `__cvar__' using "`c(sysdir_plus)'i/isocodes", nogen keepusing(`gen') keep(1 3)
+		merge 1:m `__cvar__' using "$cpath/isocodes.dta", nogen keepusing(`gen') keep(1 3)
 		foreach ind in `gen' {
 			if "`__cvar__'"!="`ind'" {
 				if "`ind'"=="iso3n" {
@@ -121,6 +121,7 @@ foreach __cvar__ in `countrylist__' {
 
 // find out version with closest match
 foreach ind in `gen' {
+	dis "`ind'"
 	local `ind'__nm = 0
 	foreach __cvar__ in `countrylist__' {
 		if "`__cvar__'"!="`ind'" {
@@ -130,25 +131,33 @@ foreach ind in `gen' {
 			}
 		}
 	}
-	rename `ind'_``ind'_highestno' `ind'
+	if "`ind'_``ind'_highestno'"!="`ind'_" {
+		rename `ind'_``ind'_highestno' `ind'
+		local `ind'_highnoproceed "yes"
+	}
+	else {
+		rename `ind'_cntryname `ind'
+	}	
 }
 
 // use that as baseline and fill with values from others
 foreach ind in `gen' {
-	foreach __cvar__ in `countrylist__' {
-		if "`__cvar__'"!="``ind'_highestno'" & "`__cvar__'"!="`ind'" {
-			if "`ind'"=="iso3n" {
-				local mihelp !mi(`ind')
-			}
-			else {
-				local mihelp `"`ind'=="""'
-			}
-			count if `mihelp'
-			if r(N)>0 {
-				replace `ind' = `ind'_`__cvar__' if mi(`ind') & !mi(`ind'_`__cvar__')
-			}
-			else {
-				continue, break
+	if "``ind'_highnoproceed'"=="yes" {
+		foreach __cvar__ in `countrylist__' {
+			if "`__cvar__'"!="``ind'_highestno'" & "`__cvar__'"!="`ind'" {
+				if "`ind'"=="iso3n" {
+					local mihelp !mi(`ind')
+				}
+				else {
+					local mihelp `"`ind'=="""'
+				}
+				count if `mihelp'
+				if r(N)>0 {
+					replace `ind' = `ind'_`__cvar__' if mi(`ind') & !mi(`ind'_`__cvar__')
+				}
+				else {
+					continue, break
+				}
 			}
 		}
 	}
@@ -169,7 +178,6 @@ if `anymiss'==1 {
 	tempfile __ogdata __fillup
 	save `__ogdata', replace 
 
-	dis `"`gen'"'
 	foreach ind in `gen' {
 		local indgenmiss `indgenmiss' | mi(`ind')
 	}
@@ -178,59 +186,268 @@ if `anymiss'==1 {
 	gen __cfill__ = ""
 	local nameofvarlist `varlist'
 
-	
-	
 	local shc replace __cfill__ =
 	local shn if regexm(`varlist',
 
-	`shc' "afghanistan" `shn' "(?i).*afg(h)?an.*")
-	`shc' "aland islands" `shn' "(?i).*[aå]?land.*") & regexm(`varlist',"(?i).*is.*") & !(regexm(`varlist',"(?i).*bouvet|virgin|cape|cayman|mayen.*")) & !(regexm(`varlist',"(?i).*marshal|norfolk|mariana|solomon|sandwich.*")) & !(regexm(`varlist',"(?i).*caicos|outlying|wallis.*"))
-	`shc' "albania" `shn' "(?i).*alban.*")
-	`shc' "algeria" `shn' "(?i).*alger.*")
-	`shc' "american samoa" `shn' "(?i).*samo.*") & regexm(`varlist',"(?i).*amer|us.*")
-	`shc' "andorra" `shn' "(?i).*andor.*")
-	`shc' "angola" `shn' "(?i).*angol.*")
-	`shc' "anguilla" `shn' "(?i).*angu.*")
-	`shc' "antarctica" `shn' "(?i).*arctica.*")
-	`shc' "antigua and barbuda" `shn' "(?i).*antig.*")
-	`shc' "argentina" `shn' "(?i).*argen.*")
-	`shc' "armenia" `shn' "(?i).*armen.*")
-	`shc' "aruba" `shn' "(?i).*arub.*")
-	`shc' "australia" `shn' "(?i).*austra.*")
-	`shc' "austria" `shn' "(?i).*austri.*")
-	`shc' "azerbaijan" `shn' "(?i).*azer.*") | regexm(`varlist',"(?i).*bai[jd]?.*")
-	`shc' "bahamas" `shn' "(?i).*baha.*")
-	`shc' "bahrain" `shn' "(?i).*bahr.*")
-	`shc' "bangladesh" `shn' "(?i).*bang.*")
-	`shc' "barbados" `shn' "(?i).*barba.*")
-	`shc' "belarus" `shn' "(?i).*bela.*") | regexm(`varlist',"(?i).*byelo.*")
-	`shc' "belgium" `shn' "(?i).*belgi.*")
-	`shc' "belize" `shn' "(?i).*beliz.*") | (regexm(`varlist',"(?i).*hond.*") & regexm(`varlist',"(?i).*brit|uk.*"))
-	`shc' "benin" `shn' "(?i).*beni|dahom.*")
-	`shc' "bermuda" `shn' "(?i).*berm.*")
-	`shc' "bhutan" `shn' "(?i).*b(h)?ut.*")
-	`shc' "bolivia" `shn' "(?i).*bolivi.*")
-	`shc' "bonaire, sint eustatius and saba" `shn' "(?i).*bona.*") & regexm(`varlist',"(?i).*eust.*") & regexm(`varlist',"(?i).*sab.*") | (regexm(__cfill__,"(?i).*carib.*") & regexm(`varlist',"(?i).*nether.*"))
-	`shc' "bosnia and herzegovina" `shn' "(?i).*bos.*") & regexm(`varlist',"(?i).*her.*")
-	`shc' "botswana" `shn' "(?i).*bots.*")
-	`shc' "bouvet island" `shn' "(?i).*bouv.*")
-	`shc' "brazil" `shn' "(?i).*brazi.*")
-	`shc' "british indian ocean territory" `shn' "(?i).*indi.*") & regexm(`varlist',"(?i).*ocean.*")
-	`shc' "british virgin islands" `shn' "(?i).*virg.*") & regexm(`varlist',"(?i).*is.*") & regexm(`varlist',"(?i).*brit|uk.*")
-	`shc' "brunei" `shn' "(?i).*brun|darus.*")
-	`shc' "bulgaria" `shn' "(?i).*bulg.*")
-	`shc' "burkina faso" `shn' "(?i).*burk|volt.*")
-	`shc' "burundi" `shn' "(?i).*buru.*")
-	`shc' "cabo verde" `shn' "(?i).*cabo|cape.*") & regexm(`varlist',"(?i).*verd.*")
-	`shc' "cambodia" `shn' "(?i).*cambo|kampu.*")
-	`shc' "cameroon" `shn' "(?i).*camer.*")
-	`shc' "macao" `shn' "(?i).*macao|macau.*")
+	`shc' "afghanistan" `shn' "afghan")
+	`shc' "albania" `shn' "albania")
+	`shc' "antarctica" `shn' "antarctica")
+	`shc' "algeria" `shn' "algeria")
+	`shc' "americansamoa" `shn' "americ") & regexm(`varlist',"samoa")
+	`shc' "andorra" `shn' "andorra")
+	`shc' "angola" `shn' "angola")
+	`shc' "antiguaandbarbuda" `shn' "antigua")
+	`shc' "azerbaijan" `shn' "azerbaijan")
+	`shc' "argentina" `shn' "argentin")
+	`shc' "australia" `shn' "australia")
+	`shc' "austria" `shn' "^(?!.*hungary).*austria|austri.*emp")
+	`shc' "bahamas" `shn' "bahamas")
+	`shc' "bahrain" `shn' "bahrain")
+	`shc' "bangladesh" `shn' "bangladesh|^(?=.*east).*paki?stan")
+	`shc' "armenia" `shn' "armenia")
+	`shc' "barbados" `shn' "barbados")
+	`shc' "belgium" `shn' "^(?!.*luxem).*belgium")
+	`shc' "bermuda" `shn' "bermuda")
+	`shc' "bhutan" `shn' "bhutan")
+	`shc' "bolivia" `shn' "bolivia")
+	`shc' "bosniaandherzegovina" `shn' "herzegovina|bosnia")
+	`shc' "botswana" `shn' "botswana|bechuana")
+	`shc' "bouvetisland" `shn' "bouvet")
+	`shc' "brazil" `shn' "brazil")
+	`shc' "belize" `shn' "belize|^(?=.*british).*honduras")
+	`shc' "britishindianoceanterritory" `shn' "british.?indian.?ocean")
+	`shc' "solomonislands" `shn' "solomon")
+	`shc' "britishvirginislands" `shn' "(?i).*virg.*") & regexm(`varlist',"(?i).*is.*") & regexm(`varlist',"(?i).*brit|uk.*")
+	`shc' "brunei" `shn' "brunei")
+	`shc' "bulgaria" `shn' "bulgaria")
+	`shc' "myanmar" `shn' "myanmar|burma")
+	`shc' "burundi" `shn' "burundi")
+	`shc' "belarus" `shn' "belarus|byelo")
+	`shc' "cambodia" `shn' "cambodia|kampuchea|khmer")
+	`shc' "cameroon" `shn' "cameroon")
+	`shc' "canada" `shn' "canada")
+	`shc' "caboverde" `shn' "verde")
+	`shc' "caymanislands" `shn' "cayman")
+	`shc' "centralafrican" `shn' "centr") & regexm(`varlist',"afr")
+	`shc' "srilanka" `shn' "sri.?lanka|ceylon")
+	`shc' "chad" `shn' "chad")
+	`shc' "chile" `shn' "chile")
+	`shc' "china" `shn' "china") & !regexm(`varlist',"taiw") & !regexm(`varlist',"hong") & !regexm(`varlist',"maca")
+	`shc' "taiwan" `shn' "taiwan|taipei|formosa|^(?!.*peo)(?=.*rep).*china")
+	`shc' "christmasisland" `shn' "christmas")
+	`shc' "cocosislands" `shn' "cocos|keeling")
+	`shc' "colombia" `shn' "colombia")
+	`shc' "comoros" `shn' "comoro")
+	`shc' "mayotte" `shn' "mayotte")
+	`shc' "congo" `shn' "congo") & !regexm(`varlist',"dem")
+	`shc' "democraticcongo" `shn' "congo") & regexm(`varlist',"dem") | regexm(`varlist',"kinshasa") | regexm(`varlist',"zaire")
+	`shc' "cookislands" `shn' "cook")
+	`shc' "costarica" `shn' "costa.?rica")
+	`shc' "croatia" `shn' "croatia")
+	`shc' "cuba" `shn' "cuba")
+	`shc' "cyprus" `shn' "cyprus")
+	`shc' "czechoslovakia" `shn' "czechoslovakia")
+	`shc' "czech" `shn' "czech|czechia|bohemia")
+	`shc' "benin" `shn' "benin|dahome")
+	`shc' "denmark" `shn' "denmark")
+	`shc' "dominica" `shn' "dominica(?!n)")
+	`shc' "dominican" `shn' "dominican")
+	`shc' "ecuador" `shn' "ecuador")
+	`shc' "elsalvador" `shn' "el.?salvador")
+	`shc' "equatorialguinea" `shn' "guine.*eq|eq.*guine|^(?=.*span).*guinea")
+	`shc' "ethiopia" `shn' "ethiopia|abyssinia")
+	`shc' "eritrea" `shn' "eritrea")
+	`shc' "estonia" `shn' "estonia")
+	`shc' "faroeislands" `shn' "faroe|faeroe")
+	`shc' "falklandislands" `shn' "falkland|malvinas")
+	`shc' "southgeorgiaandsouthsandwichislands" `shn' "south.?georgia|sandwich")
+	`shc' "fiji" `shn' "fiji")
+	`shc' "finland" `shn' "finland")
+	`shc' "alandislands" `shn' "^[å|a]land")
+	`shc' "france" `shn' "france") | regexm(`varlist',"french") & !regexm(`varlist',"dep") & !regexm(`varlist',"martinique") & !regexm(`varlist',"guiana") & !regexm(`varlist',"guyana") & !regexm(`varlist',"polynes") & !regexm(`varlist',"territ") & !regexm(`varlist',"martin")& !regexm(`varlist',"maarten")
+	`shc' "frenchguiana" `shn' "french.?gu(y|i)ana")
+	`shc' "frenchpolynesia" `shn' "french.?polynesia|tahiti")
+	`shc' "frenchsouthernterritories" `shn' "french.?southern")
+	`shc' "djibouti" `shn' "djibouti")
+	`shc' "gabon" `shn' "gabon")
+	`shc' "georgia" `shn' "^(?!.*south).*georgia")
+	`shc' "gambia" `shn' "gambia")
+	`shc' "palestine" `shn' "palestin|gaza|west.?bank")
+	`shc' "germany" `shn' "german") & !regexm(`varlist',"east") & !regexm(`varlist',"federal")
+	`shc' "germandemocratic" `shn' "german.?democratic.?rep|democratic.?rep.*germany|east.germany|germany.*east")
+	`shc' "ghana" `shn' "ghana|gold.?coast")
+	`shc' "gibraltar" `shn' "gibraltar")
+	`shc' "kiribati" `shn' "kiribati")
+	`shc' "greece" `shn' "greece|hellenic|hellas")
+	`shc' "greenland" `shn' "greenland")
+	`shc' "grenada" `shn' "grenada")
+	`shc' "guadeloupe" `shn' "guadeloupe")
+	`shc' "guam" `shn' "guam")
+	`shc' "guatemala" `shn' "guatemala")
+	`shc' "guinea" `shn' "^(?!.*eq)(?!.*span)(?!.*bissau)(?!.*portu)(?!.*new).*guinea")
+	`shc' "guyana" `shn' "^guyana|british.?gu(y|i)ana")
+	`shc' "haiti" `shn' "haiti")
+	`shc' "heardislandandmcdonaldislands" `shn' "heard.*mcdonald")
+	`shc' "vaticancity" `shn' "holy.?see|vatican|papal.?st")
+	`shc' "honduras" `shn' "^(?!.*brit).*honduras")
+	`shc' "hongkong" `shn' "hong.?kong")
+	`shc' "hungary" `shn' "^(?!.*austr).*hungary")
+	`shc' "iceland" `shn' "iceland")
+	`shc' "india" `shn' "india(?!.*ocea)")
+	`shc' "indonesia" `shn' "indonesia")
+	`shc' "iran" `shn' "iran|persia")
+	`shc' "iraq" `shn' "iraq|mesopotamia")
+	`shc' "ireland" `shn' "^(?!.*north).*ireland")
+	`shc' "israel" `shn' "israel")
+	`shc' "italy" `shn' "italy|italian.?republic")
+	`shc' "côtedivoire" `shn' "ivoire|ivory")
+	`shc' "jamaica" `shn' "jamaica")
+	`shc' "japan" `shn' "japan")
+	`shc' "kazakhstan" `shn' "kazak")
+	`shc' "jordan" `shn' "jordan")
+	`shc' "kenya" `shn' "kenya|british.?east.?africa|east.?africa.?prot")
+	`shc' "northkorea" `shn' "korea.*people|dprk|d.p.r.k|korea.+(d.p.r|dpr|north|dem.*rep.*)|(d.p.r|dpr|north|dem.*rep.*).+korea")
+	`shc' "southkorea" `shn' "^(?!.*d.*p.*r)(?!.*democrat)(?!.*dem.*rep)(?!.*people)(?!.*north).*korea(?!.*d.*p.*r)(?!.*dem.*rep)")
+	`shc' "kuwait" `shn' "kuwait")
+	`shc' "kyrgyzstan" `shn' "kyrgyz|kirghiz")
+	`shc' "laos" `shn' "lao")
+	`shc' "lebanon" `shn' "lebanon")
+	`shc' "lesotho" `shn' "lesotho|basuto")
+	`shc' "latvia" `shn' "latvia")
+	`shc' "liberia" `shn' "liberia")
+	`shc' "libya" `shn' "libya")
+	`shc' "liechtenstein" `shn' "liechtenstein")
+	`shc' "lithuania" `shn' "lithuania")
+	`shc' "luxembourg" `shn' "^(?!.*belg).*luxem")
+	`shc' "macao" `shn' "maca(o|u)")
+	`shc' "madagascar" `shn' "madagascar|malagasy")
+	`shc' "malawi" `shn' "malawi|nyasa")
+	`shc' "malaysia" `shn' "malaysia")
+	`shc' "maldives" `shn' "maldive")
+	`shc' "mali" `shn' "mali") & !regexm(`varlist',"somal")
+	`shc' "malta" `shn' "malta")
+	`shc' "martinique" `shn' "martinique")
+	`shc' "mauritania" `shn' "mauritania")
+	`shc' "mauritius" `shn' "mauritius")
+	`shc' "mexico" `shn' "mexic")
+	`shc' "monaco" `shn' "monaco")
+	`shc' "mongolia" `shn' "mongolia")
+	`shc' "moldova" `shn' "moldov|b(a|e)ssarabia")
+	`shc' "montenegro" `shn' "^(?!.*serbia).*montenegro")
+	`shc' "montserrat" `shn' "montserrat")
+	`shc' "morocco" `shn' "morocco|maroc")
+	`shc' "mozambique" `shn' "mozambique")
+	`shc' "oman" `shn' "oman|trucial")
+	`shc' "namibia" `shn' "namibia")
+	`shc' "nauru" `shn' "nauru")
+	`shc' "nepal" `shn' "nepal")
+	`shc' "netherlands" `shn' "^(?!.*ant)(?!.*carib).*netherlands|holland")
+	`shc' "netherlandsantilles" `shn' "netherlands.antil|dutch.antil")
+	`shc' "curaçao" `shn' "^(?!.*bonaire).*cura(c|ç)ao")
+	`shc' "aruba" `shn' "^(?!.*bonaire).*aruba")
+	`shc' "sintmaarten" `shn' "^(?!.*martin)(?!.*saba).*maarten")
+	`shc' "bonairesinteustatiusandsaba" `shn' "^(?=.*bonaire).*eustatius|^(?=.*carib).*netherlands|bes.?islands")
+	`shc' "newcaledonia" `shn' "new.?caledonia")
+	`shc' "vanuatu" `shn' "vanuatu|new.?hebrides")
+	`shc' "newzealand" `shn' "new.?zealand")
+	`shc' "nicaragua" `shn' "nicaragua")
+	`shc' "niger" `shn' "niger(?!ia)")
+	`shc' "nigeria" `shn' "nigeria")
+	`shc' "niue" `shn' "niue")
+	`shc' "norfolkisland" `shn' "norfolk")
+	`shc' "norway" `shn' "norway")
+	`shc' "northernmarianaislands" `shn' "mariana")
+	`shc' "usminoroutlyingislands" `shn' "minor.?outlying.?is")
+	`shc' "micronesia" `shn' "fed.*micronesia|micronesia.*fed")
+	`shc' "marshallislands" `shn' "marshall")
+	`shc' "palau" `shn' "palau")
+	`shc' "pakistan" `shn' "^(?!.*east).*paki?stan")
+	`shc' "panama" `shn' "panama")
+	`shc' "papuanewguinea" `shn' "papua|new.?guinea")
+	`shc' "paraguay" `shn' "paraguay")
+	`shc' "peru" `shn' "peru")
+	`shc' "philippines" `shn' "philippines")
+	`shc' "pitcairn" `shn' "pitcairn")
+	`shc' "poland" `shn' "poland")
+	`shc' "portugal" `shn' "portugal")
+	`shc' "guinea-bissau" `shn' "bissau|^(?=.*portu).*guinea")
+	`shc' "timorleste" `shn' "^(?=.*leste).*timor|^(?=.*east).*timor")
+	`shc' "puertorico" `shn' "puerto.?rico")
+	`shc' "qatar" `shn' "qatar")
+	`shc' "réunion" `shn' "r(e|é)union")
+	`shc' "romania" `shn' "r(o|u|ou)mania")
+	`shc' "russia" `shn' "russia|soviet.?union|u\.?s\.?s\.?r|socialist.?republics")
+	`shc' "rwanda" `shn' "rwanda")
+	`shc' "saintbarthélemy" `shn' "barth(e|é)lemy")
+	`shc' "sainthelena" `shn' "helena")
+	`shc' "saintkittsandnevis" `shn' "kitts|nevis")
+	`shc' "anguilla" `shn' "anguill?a")
+	`shc' "saintlucia" `shn' "lucia")
+	`shc' "saintmartin" `shn' "saint.martin.*FR|^(?=.*collectivity).*martin|^(?=.*france).*martin(?!ique)|^(?=.*french).*martin(?!ique)")
+	`shc' "saintpierreandmiquelon" `shn' "miquelon")
+	`shc' "saintvincentandgrenadines" `shn' "vincent")
+	`shc' "sanmarino" `shn' "san.?marino")
+	`shc' "saotomeandprincipe" `shn' "s(a|ã)o.?tom(e|é)")
+	`shc' "saudiarabia" `shn' "sa\w*.?arabia")
+	`shc' "senegal" `shn' "senegal")
+	`shc' "serbia" `shn' "^(?!.*monte).*serbia")
+	`shc' "seychelles" `shn' "seychell")
+	`shc' "sierraleone" `shn' "sierra")
+	`shc' "singapore" `shn' "singapore")
+	`shc' "slovakia" `shn' "^(?!.*cze).*slovak")
+	`shc' "vietnam" `shn' "^(?!south)(?!republic).*viet.?nam(?!.*south)|democratic.republic.of.vietnam|socialist.republic.of.viet.?nam|north.viet.?nam|viet.?nam.north")
+	`shc' "slovenia" `shn' "slovenia")
+	`shc' "somalia" `shn' "somalia")
+	`shc' "southafrica" `shn' "south") & regexm(`varlist',"afric")
+	`shc' "zimbabwe" `shn' "zimbabwe|^(?!.*northern).*rhodesia")
+	`shc' "spain" `shn' "spain")
+	`shc' "southsudan" `shn' "sudan") & regexm(`varlist',"south")
+	`shc' "sudan" `shn' "^(?!.*s(?!u)).*sudan") & !regexm(`varlist',"south")
+	`shc' "westernsahara" `shn' "western.sahara")
+	`shc' "suriname" `shn' "surinam|dutch.?gu(y|i)ana")
+	`shc' "svalbardandjanmayen" `shn' "svalbard")
+	`shc' "eswatini" `shn' "swaziland|eswatini")
+	`shc' "sweden" `shn' "sweden")
+	`shc' "switzerland" `shn' "switz|swiss")
+	`shc' "syria" `shn' "syria")
+	`shc' "tajikistan" `shn' "tajik")
+	`shc' "thailand" `shn' "thailand|siam")
+	`shc' "togo" `shn' "togo")
+	`shc' "tokelau" `shn' "tokelau")
+	`shc' "tonga" `shn' "tonga")
+	`shc' "trinidadandtobago" `shn' "trinidad|tobago")
+	`shc' "unitedarabemirates" `shn' "emirates|^u\.?a\.?e\.?$|united.?arab.?em")
+	`shc' "tunisia" `shn' "tunisia")
+	`shc' "turkey" `shn' "turkey|t(ü|u)rkiye")
+	`shc' "turkmenistan" `shn' "turkmen")
+	`shc' "turksandcaicosislands" `shn' "turks")
+	`shc' "tuvalu" `shn' "tuvalu")
+	`shc' "uganda" `shn' "uganda")
+	`shc' "ukraine" `shn' "ukrain")
+	`shc' "northmacedonia" `shn' "macedonia|fyrom")
+	`shc' "sovietunion" `shn' "ussr")
+	`shc' "egypt" `shn' "egypt")
+	`shc' "unitedkingdom" `shn' "united.?kingdom|britain|^u\.?k\.?$")
+	`shc' "guernsey" `shn' "guernsey")
+	`shc' "jersey" `shn' "jersey")
+	`shc' "isleman" `shn' "isle") & regexm(`varlist',"man")
+	`shc' "tanzania" `shn' "tanzania")
+	`shc' "unitedstates" `shn' "united") & regexm(`varlist',"state") & !regexm(`varlist',"island")
+	`shc' "unitedstatesvirginislands" `shn' "virg") & regexm(`varlist',"island") & !regexm(`varlist',"brit") & !regexm(`varlist',"uk") & !regexm(`varlist',"u.k")
+	`shc' "burkinafaso" `shn' "burkina|upper.?volta")
+	`shc' "uruguay" `shn' "uruguay")
+	`shc' "uzbekistan" `shn' "uzbek")
+	`shc' "venezuela" `shn' "venezuela")
+	`shc' "wallisandfutuna" `shn' "futuna|wallis")
+	`shc' "samoa" `shn' "^(?!.*amer).*samoa")
+	`shc' "yemen" `shn' "yemen")
+	`shc' "yugoslavia" `shn' "yugoslavia")
+	`shc' "zambia" `shn' "zambia|northern.?rhodesia")
 	
-
 	keep if __cfill__!=""
 	rename __cfill__ cntryname
 	foreach ind in `gen' {
-		if "`ind'"!="cntryname" merge m:1 cntryname using "`c(sysdir_plus)'i/isocodes", nogen keepusing(`ind') keep(1 3)
+		if "`ind'"!="cntryname" merge m:1 cntryname using "$cpath/isocodes.dta", nogen keepusing(`ind') keep(1 3)
 	}
 	noisily di "The following strings were matched with a degree of uncertainty. Please check if this is correct."
 	rename __ogcountry OriginalVar
@@ -258,7 +475,7 @@ if wordcount("`gen'")>1 {
 			rename `ind' `ind'_temp
 			local not_`ind' = subinstr("`gen'","`ind'","",.)
 			foreach notind in `not_`ind'' {
-				merge 1:m `notind' using "`c(sysdir_plus)'i/isocodes", nogen keepusing(`ind') keep(1 3)
+				merge 1:m `notind' using "$cpath/isocodes.dta", nogen keepusing(`ind') keep(1 3)
 				replace `ind'_temp = `ind' if mi(`ind'_temp) & !mi(`ind')
 				drop `ind'
 			}
@@ -269,7 +486,7 @@ if wordcount("`gen'")>1 {
 
 // capitalize strings for cntryname 
 if strpos("`gen'","cntryname") {
-	merge 1:m cntryname using "`c(sysdir_plus)'i/isocodes", nogen keepusing(cntryname_uc) keep(1 3)
+	merge 1:m cntryname using "$cpath/isocodes.dta", nogen keepusing(cntryname_uc) keep(1 3)
 	drop cntryname
 	rename cntryname_uc cntryname
 }
