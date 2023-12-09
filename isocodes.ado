@@ -52,10 +52,10 @@ else {
 	local ggen gegen
 }
 
-cap describe using "`c(sysdir_plus)'i/isocodes.dta", short varl
+cap describe using "C:\Forschung\Leo Stata Files\isocodes ado/isocodes.dta", short varl
 local ccodes_data_varl = r(varlist)
-if _rc | !strpos("`ccodes_data_varl'","version1") {
-	net set other `c(sysdir_plus)'i
+if _rc | !strpos("`ccodes_data_varl'","version2") {
+	net set other C:\Forschung\Leo Stata Files\isocodes ado
 	net get isocodes, from("https://raw.githubusercontent.com/leojahrens/isocodes/master") replace
 }
 
@@ -432,7 +432,7 @@ if `anymiss'==1 {
 	`shc' "jersey" `shn' "jersey")
 	`shc' "isleman" `shn' "isle") & regexm(`varlist',"man")
 	`shc' "tanzania" `shn' "tanzania")
-	`shc' "unitedstates" `shn' "united") & regexm(`varlist',"state") & !regexm(`varlist',"island")
+	`shc' "unitedstates" `shn' "united") & regexm(`varlist',"state") & !regexm(`varlist',"island") | regexm(`varlist',"usa") & !regexm("^(?=.*bonaire).*eustatius|^(?=.*carib).*netherlands|bes.?islands")
 	`shc' "unitedstatesvirginislands" `shn' "virg") & regexm(`varlist',"island") & !regexm(`varlist',"brit") & !regexm(`varlist',"uk") & !regexm(`varlist',"u.k")
 	`shc' "burkinafaso" `shn' "burkina|upper.?volta")
 	`shc' "uruguay" `shn' "uruguay")
