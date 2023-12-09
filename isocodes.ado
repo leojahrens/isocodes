@@ -52,10 +52,10 @@ else {
 	local ggen gegen
 }
 
-cap describe using "C:\Forschung\Leo Stata Files\isocodes ado/isocodes.dta", short varl
+cap describe using "`c(sysdir_plus)'i/isocodes.dta", short varl
 local ccodes_data_varl = r(varlist)
 if _rc | !strpos("`ccodes_data_varl'","version2") {
-	net set other C:\Forschung\Leo Stata Files\isocodes ado
+	net set other "`c(sysdir_plus)'i"
 	net get isocodes, from("https://raw.githubusercontent.com/leojahrens/isocodes/master") replace
 }
 
