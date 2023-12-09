@@ -285,7 +285,7 @@ if `anymiss'==1 {
 	`shc' "guam" `shn' "guam")
 	`shc' "guatemala" `shn' "guatemala")
 	`shc' "guinea" `shn' "^(?!.*eq)(?!.*span)(?!.*bissau)(?!.*portu)(?!.*new).*guinea")
-	`shc' "guyana" `shn' "^guyana|british.?gu(y|i)ana")
+	`shc' "guyana" `shn' "guyana") | regexm(`varlist',"guiana") & !regexm(`varlist',"french") & !regexm(`varlist',"france") & !regexm(`varlist',"britis")
 	`shc' "haiti" `shn' "haiti")
 	`shc' "heardislandandmcdonaldislands" `shn' "heard.*mcdonald")
 	`shc' "vaticancity" `shn' "holy.?see|vatican|papal.?st")
