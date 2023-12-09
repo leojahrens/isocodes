@@ -264,7 +264,7 @@ if `anymiss'==1 {
 	`shc' "fiji" `shn' "fiji")
 	`shc' "finland" `shn' "finland")
 	`shc' "alandislands" `shn' "^[å|a]land")
-	`shc' "france" `shn' "france") | regexm(`varlist',"french") & !regexm(`varlist',"dep") & !regexm(`varlist',"martinique") & !regexm(`varlist',"guiana") & !regexm(`varlist',"guyana") & !regexm(`varlist',"polynes") & !regexm(`varlist',"territ") & !regexm(`varlist',"martin")& !regexm(`varlist',"maarten")
+	`shc' "france" `shn' "france") | regexm(`varlist',"french") & !regexm(`varlist',"dep") & !regexm(`varlist',"martinique") & !regexm(`varlist',"guiana") & !regexm(`varlist',"guyana") & !regexm(`varlist',"polynes") & !regexm(`varlist',"territ") & !regexm(`varlist',"martin") & !regexm(`varlist',"maarten")
 	`shc' "frenchguiana" `shn' "french.?gu(y|i)ana")
 	`shc' "frenchpolynesia" `shn' "french.?polynesia|tahiti")
 	`shc' "frenchsouthernterritories" `shn' "french.?southern")
