@@ -100,7 +100,7 @@ local __cname__ "`varlist'"
 foreach __cvar__ in `countrylist__' {
 	if "`__cvar__'"!="`gen'" {
 		rename `__cname__' `__cvar__'
-		merge 1:m `__cvar__' using "$cpath/isocodes.dta", nogen keepusing(`gen') keep(1 3)
+		merge 1:m `__cvar__' using "`c(sysdir_plus)'i/isocodes.dta", nogen keepusing(`gen') keep(1 3)
 		foreach ind in `gen' {
 			if "`__cvar__'"!="`ind'" {
 				if "`ind'"=="iso3n" {
@@ -447,7 +447,7 @@ if `anymiss'==1 {
 	keep if __cfill__!=""
 	rename __cfill__ cntryname
 	foreach ind in `gen' {
-		if "`ind'"!="cntryname" merge m:1 cntryname using "$cpath/isocodes.dta", nogen keepusing(`ind') keep(1 3)
+		if "`ind'"!="cntryname" merge m:1 cntryname using "`c(sysdir_plus)'i/isocodes.dta", nogen keepusing(`ind') keep(1 3)
 	}
 	noisily di "The following strings were matched with a degree of uncertainty. Please check if this is correct."
 	rename __ogcountry OriginalVar
@@ -475,7 +475,7 @@ if wordcount("`gen'")>1 {
 			rename `ind' `ind'_temp
 			local not_`ind' = subinstr("`gen'","`ind'","",.)
 			foreach notind in `not_`ind'' {
-				merge 1:m `notind' using "$cpath/isocodes.dta", nogen keepusing(`ind') keep(1 3)
+				merge 1:m `notind' using "`c(sysdir_plus)'i/isocodes.dta", nogen keepusing(`ind') keep(1 3)
 				replace `ind'_temp = `ind' if mi(`ind'_temp) & !mi(`ind')
 				drop `ind'
 			}
@@ -486,7 +486,7 @@ if wordcount("`gen'")>1 {
 
 // capitalize strings for cntryname 
 if strpos("`gen'","cntryname") {
-	merge 1:m cntryname using "$cpath/isocodes.dta", nogen keepusing(cntryname_uc) keep(1 3)
+	merge 1:m cntryname using "`c(sysdir_plus)'i/isocodes.dta", nogen keepusing(cntryname_uc) keep(1 3)
 	drop cntryname
 	rename cntryname_uc cntryname
 }
