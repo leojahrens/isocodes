@@ -25,10 +25,9 @@ if subinstr(subinstr(subinstr("`gen_substr'","iso2c","",.),"iso3n","",.)," ","",
 	exit 498
 }
 
-local keepr_substr = subinstr(subinstr(subinstr("`keepregion'","oecd","",.),"eu","",.),"emu","",.)
-local keepr_substr2 = subinstr(subinstr(subinstr("`keepr_substr'","africa","",.),"america","",.),"asia","",.)
-if subinstr(subinstr(subinstr("`keepr_substr2'","europe","",.),"oceania","",.)," ","",.)!="" {
-	di as error "keepregion() only accepts {it:oecd}, {it:eu}, {it:emu}, {it:africa}, {it:america}, {it:asia}, {it:europe}, and {it:oceania}."
+local keepr_substr = subinstr(subinstr(subinstr(subinstr("`keepregion'","oecd","",.),"eu","",.),"emu","",.)," ","",.)
+if "`keepr_substr'"!="" {
+	di as error "keepregion() only accepts {it:oecd}, {it:eu}, and {it:emu}"
 	exit 498
 }
 	
@@ -37,10 +36,12 @@ if subinstr(subinstr(subinstr("`keepr_substr2'","europe","",.),"oceania","",.),"
 *-------------------------------------------------------------------------------
 
 quietly {
-	
+
+// gtools yes/no
 if "`slow'"!="" {
 	local lvlsof levelsof
 	local ggen egen
+	local gduplicates duplicates
 }
 else {
 	capture which gtools
@@ -50,8 +51,10 @@ else {
 	}
 	local lvlsof glevelsof
 	local ggen gegen
+	local gduplicates gduplicates
 }
 
+// get current version of the country strings dataset 
 cap describe using "`c(sysdir_plus)'i/isocodes.dta", short varl
 local ccodes_data_varl = r(varlist)
 if _rc | !strpos("`ccodes_data_varl'","version2") {
@@ -63,10 +66,13 @@ if _rc | !strpos("`ccodes_data_varl'","version2") {
 * prep dataset
 *-------------------------------------------------------------------------------
 
+// report missings in the country string
 qui count if `varlist'==""
 if r(N)>0 {
 	noisily di "There are " r(N) " missings in the {it:`varlist'} variable, which cannot be considered."
 }
+
+// check for variables with same names as in gen()
 foreach __var in `gen' {
 	cap confirm variable `__var'
 	if !_rc {
@@ -74,9 +80,12 @@ foreach __var in `gen' {
 		noisily di "A variable named `__var' already exists in the dataset. It has been dropped and replaced."
 	}
 }
-preserve 
-clonevar __ogcountry = `varlist'
 
+// preserve
+preserve 
+
+// create stripped version of the input country string
+clonevar __ogcountry = `varlist'
 replace `varlist' = subinstr(subinstr(subinstr(lower(`varlist'),":"," ",.),"'"," ",.),"-"," ",.)
 replace `varlist' = subinstr(subinstr(subinstr(subinstr(`varlist',","," ",.),"/"," ",.),"("," ",.),")"," ",.)
 replace `varlist' = subinstr(subinstr(subinstr(subinstr(`varlist',"."," ",.),"&"," ",.)," republics"," ",.)," the"," ",.)
@@ -84,23 +93,33 @@ replace `varlist' = subinstr(subinstr(subinstr(subinstr(`varlist'," of"," ",.),"
 replace `varlist' = subinstr(subinstr(subinstr(subinstr(`varlist'," republic"," ",.),"republic "," ",.)," republic "," ",.),"the "," ",.)
 replace `varlist' = subinstr(subinstr(subinstr(subinstr(`varlist'," rep"," ",.),"rep "," ",.)," rep "," ",.)," ","",.)
 
+// reduce dataset to minimal obs&vars
 `ggen' __tag = tag(`varlist')
 keep if __tag==1 & `varlist'!=""
 keep `varlist' __ogcountry
 
 *-------------------------------------------------------------------------------
-* assign country codes
+* match country codes with attached dataset
 *-------------------------------------------------------------------------------
 
 // list of variables in attached dataset
-local countrylist__ cntryname iso2c iso3c penn cow unctad marc name2 name3 name4 name5 name6 name7 cntryname_copy
+local countrylist__ cntryname iso2c iso3c wb3c wb2c penn cow unctad marc eurostat ecb unhcr ioc name2 name3 name4 name5 name6 name7 cntryname_copy
 
-// merge with all variants
+// extend gen() list if further vars are required for keepx()
+if "`keepregion'`keepiso3n'`keepiso3c'`keepiso2c'"!="" {
+	local oggen `gen'
+	foreach keepopt in iso3n iso3c iso2c {
+		if "`keep`keepopt''"!="" & !strpos("`gen'","`keepopt'") local gen `gen' `keepopt'
+	}
+	if "`keepregion'"!="" & !strpos("`gen'","iso3n") local gen `gen' iso3n
+}
+
+// merge input string with all country names/codes in attached dataset
 local __cname__ "`varlist'"
 foreach __cvar__ in `countrylist__' {
 	if "`__cvar__'"!="`gen'" {
 		rename `__cname__' `__cvar__'
-		merge 1:m `__cvar__' using "`c(sysdir_plus)'i/isocodes.dta", nogen keepusing(`gen') keep(1 3)
+		merge m:m `__cvar__' using "`c(sysdir_plus)'i/isocodes.dta", nogen keepusing(`gen') keep(1 3)
 		foreach ind in `gen' {
 			if "`__cvar__'"!="`ind'" {
 				if "`ind'"=="iso3n" {
@@ -111,7 +130,7 @@ foreach __cvar__ in `countrylist__' {
 				}
 				rename `ind' `ind'_`__cvar__'
 				if "`ind'"!="iso3n" replace `ind'_`__cvar__' = "" if `ind'_`__cvar__'=="__mi"
-				count if `mihelp'
+				count if `mihelp' 		// count non-missing values for below
 				local `ind'_`__cvar__'_nm = r(N)	
 			}
 		}
@@ -119,9 +138,8 @@ foreach __cvar__ in `countrylist__' {
 	}
 }
 
-// find out version with closest match
+// find out what variable from the attached dataset gives closest match to input string
 foreach ind in `gen' {
-	dis "`ind'"
 	local `ind'__nm = 0
 	foreach __cvar__ in `countrylist__' {
 		if "`__cvar__'"!="`ind'" {
@@ -136,13 +154,13 @@ foreach ind in `gen' {
 		local `ind'_highnoproceed "yes"
 	}
 	else {
-		rename `ind'_cntryname `ind'
+		rename `ind'_cntryname_copy `ind'
 	}	
 }
 
-// use that as baseline and fill with values from others
+// use best match as baseline & fill missings with matches from other vars in attchd data
 foreach ind in `gen' {
-	if "``ind'_highnoproceed'"=="yes" {
+	if "``ind'_highnoproceed'"=="yes" { // only if there was at least one match
 		foreach __cvar__ in `countrylist__' {
 			if "`__cvar__'"!="``ind'_highestno'" & "`__cvar__'"!="`ind'" {
 				if "`ind'"=="iso3n" {
@@ -167,22 +185,30 @@ foreach ind in `gen' {
 rename `__cname__' `varlist'
 keep `varlist' __ogcountry `gen'
 
-// fillup with regular expressions
+*-------------------------------------------------------------------------------
+* match missings with regular expressions
+*-------------------------------------------------------------------------------
+
+// check if there are non matches
 local anymiss = 0
 foreach ind in `gen' {
 	count if mi(`ind')
 	if r(N)>0 local anymiss = 1 
 }
 
+// proceed with reg ex if yes
 if `anymiss'==1 {
+	
+	// save & restrict data to missings
 	tempfile __ogdata __fillup
 	save `__ogdata', replace 
-
 	foreach ind in `gen' {
 		local indgenmiss `indgenmiss' | mi(`ind')
 	}
 	keep if 1==2 `indgenmiss'
 	keep `varlist' __ogcountry
+	
+	// gen new country var and match with regular expressions
 	gen __cfill__ = ""
 	local nameofvarlist `varlist'
 
@@ -197,10 +223,10 @@ if `anymiss'==1 {
 	`shc' "andorra" if `shn'"andorra")
 	`shc' "angola" if `shn'"angola")
 	`shc' "antiguaandbarbuda" if `shn'"antigua")
-	`shc' "azerbaijan" if `shn'"azerbaijan")
+	`shc' "azerbaijan" if `shn'"azerbai(j|dsch)an")
 	`shc' "argentina" if `shn'"argentin")
 	`shc' "australia" if `shn'"australia")
-	`shc' "austria" if `shn'"^(?!.*hungary).*austria|austri.*emp")
+	`shc' "austria" if `shn'"austria") | `shn'"^(?!.*hungary).*austria|austri.*emp")
 	`shc' "bahamas" if `shn'"bahamas")
 	`shc' "bahrain" if `shn'"bahrain")
 	`shc' "bangladesh" if `shn'"bangladesh|^(?=.*east).*paki?stan")
@@ -214,10 +240,10 @@ if `anymiss'==1 {
 	`shc' "botswana" if `shn'"botswana|bechuana")
 	`shc' "bouvetisland" if `shn'"bouvet")
 	`shc' "brazil" if `shn'"brazil")
-	`shc' "belize" if `shn'"belize|^(?=.*british).*honduras")
+	`shc' "belize" if `shn'"belize") | (`shn'"honduras") & `shn'"brit|uk"))
 	`shc' "britishindianoceanterritory" if `shn'"british.?indian.?ocean")
 	`shc' "solomonislands" if `shn'"solomon")
-	`shc' "britishvirginislands" if `shn'"(?i).*virg.*") & `shn'"(?i).*is.*") & `shn'"(?i).*brit|uk.*")
+	`shc' "britishvirginislands" if (`shn'"virgin") & `shn'"island")) & (`shn'"brit|uk|u.k") | !`shn'"us|states|united|americ"))
 	`shc' "brunei" if `shn'"brunei")
 	`shc' "bulgaria" if `shn'"bulgaria")
 	`shc' "myanmar" if `shn'"myanmar|burma")
@@ -228,26 +254,26 @@ if `anymiss'==1 {
 	`shc' "canada" if `shn'"canada")
 	`shc' "caboverde" if `shn'"verde")
 	`shc' "caymanislands" if `shn'"cayman")
-	`shc' "centralafrican" if `shn'"centr") & `shn'"afr")
+	`shc' "centralafrican" if `shn'"centra") & `shn'"afric")
 	`shc' "srilanka" if `shn'"sri.?lanka|ceylon")
 	`shc' "chad" if `shn'"chad")
 	`shc' "chile" if `shn'"chile")
-	`shc' "china" if `shn'"china") & !`shn'"taiw") & !`shn'"hong") & !`shn'"maca")
-	`shc' "taiwan" if `shn'"taiwan|taipei|formosa|^(?!.*peo)(?=.*rep).*china")
+	`shc' "china" if `shn'"china") & !`shn'"taiw|hongmaca")
+	`shc' "taiwan" if `shn'"taiwan|taipei|formosa")
 	`shc' "christmasisland" if `shn'"christmas")
 	`shc' "cocosislands" if `shn'"cocos|keeling")
 	`shc' "colombia" if `shn'"colombia")
 	`shc' "comoros" if `shn'"comoro")
 	`shc' "mayotte" if `shn'"mayotte")
-	`shc' "congo" if `shn'"congo") & !`shn'"dem")
-	`shc' "democraticcongo" if `shn'"congo") & `shn'"dem") | (`shn'"kinshasa") | `shn'"zaire"))
+	`shc' "congo" if `shn'"congo") & !`shn'"dem|dr")
+	`shc' "democraticcongo" if (`shn'"congo") & `shn'"dem|dr")) | `shn'"kinshasa|zaire")
 	`shc' "cookislands" if `shn'"cook")
 	`shc' "costarica" if `shn'"costa.?rica")
 	`shc' "croatia" if `shn'"croatia")
 	`shc' "cuba" if `shn'"cuba")
 	`shc' "cyprus" if `shn'"cyprus")
-	`shc' "czechoslovakia" if `shn'"czechoslovakia")
-	`shc' "czech" if `shn'"czech|czechia|bohemia")
+	`shc' "czechoslovakia" if `shn'"czechoslovak")
+	`shc' "czech" if `shn'"czech|czechia|bohemia") & !`shn'"czechoslovak")
 	`shc' "benin" if `shn'"benin|dahome")
 	`shc' "denmark" if `shn'"denmark")
 	`shc' "dominica" if `shn'"dominica(?!n)")
@@ -264,17 +290,17 @@ if `anymiss'==1 {
 	`shc' "fiji" if `shn'"fiji")
 	`shc' "finland" if `shn'"finland")
 	`shc' "alandislands" if `shn'"^[å|a]land")
-	`shc' "france" if `shn'"france|french") & !(`shn'"dep") | `shn'"martinique") | `shn'"guiana") | `shn'"guyana") | `shn'"polynes") | `shn'"territ") | `shn'"martin") | `shn'"maarten"))
-	`shc' "frenchguiana" if `shn'"french.?gu(y|i)ana")
-	`shc' "frenchpolynesia" if `shn'"french.?polynesia|tahiti")
+	`shc' "france" if `shn'"france|french") & !`shn'"dep|gu(y|i)ana|polynes|territ|martin|maarten")
+	`shc' "frenchguiana" if `shn'"french|france") & `shn'"gu(y|i)ana")
+	`shc' "frenchpolynesia" if `shn'"french|france") & `shn'"polynesia|tahiti")
 	`shc' "frenchsouthernterritories" if `shn'"french.?southern")
 	`shc' "djibouti" if `shn'"djibouti")
 	`shc' "gabon" if `shn'"gabon")
 	`shc' "georgia" if `shn'"^(?!.*south).*georgia")
 	`shc' "gambia" if `shn'"gambia")
 	`shc' "palestine" if `shn'"palestin|gaza|west.?bank")
-	`shc' "germany" if `shn'"german") & !`shn'"east") & !`shn'"federal")
-	`shc' "germandemocratic" if `shn'"german.?democratic.?rep|democratic.?rep.*germany|east.germany|germany.*east")
+	`shc' "germany" if `shn'"german") & (!`shn'"east|soviet|democratic") | `shn'"federal"))
+	`shc' "germandemocratic" if `shn'"german") & `shn'"east|soviet|democratic") & !`shn'"federal")
 	`shc' "ghana" if `shn'"ghana|gold.?coast")
 	`shc' "gibraltar" if `shn'"gibraltar")
 	`shc' "kiribati" if `shn'"kiribati")
@@ -285,11 +311,11 @@ if `anymiss'==1 {
 	`shc' "guam" if `shn'"guam")
 	`shc' "guatemala" if `shn'"guatemala")
 	`shc' "guinea" if `shn'"^(?!.*eq)(?!.*span)(?!.*bissau)(?!.*portu)(?!.*new).*guinea")
-	`shc' "guyana" if `shn'"guyana|guiana") & !(`shn'"french") | !`shn'"france") | !`shn'"britis"))
+	`shc' "guyana" if `shn'"gu(y|i)ana") & !`shn'"french|france|british")
 	`shc' "haiti" if `shn'"haiti")
-	`shc' "heardislandandmcdonaldislands" if `shn'"heard.*mcdonald")
+	`shc' "heardislandandmcdonaldislands" if `shn'"heard.*m?.cdonald")
 	`shc' "vaticancity" if `shn'"holy.?see|vatican|papal.?st")
-	`shc' "honduras" if `shn'"^(?!.*brit).*honduras")
+	`shc' "honduras" if `shn'"honduras") & !`shn'"brit|uk")
 	`shc' "hongkong" if `shn'"hong.?kong")
 	`shc' "hungary" if `shn'"^(?!.*austr).*hungary")
 	`shc' "iceland" if `shn'"iceland")
@@ -299,15 +325,15 @@ if `anymiss'==1 {
 	`shc' "iraq" if `shn'"iraq|mesopotamia")
 	`shc' "ireland" if `shn'"^(?!.*north).*ireland")
 	`shc' "israel" if `shn'"israel")
-	`shc' "italy" if `shn'"italy|italian.?republic")
+	`shc' "italy" if `shn'"italy|italian")
 	`shc' "côtedivoire" if `shn'"ivoire|ivory")
 	`shc' "jamaica" if `shn'"jamaica")
 	`shc' "japan" if `shn'"japan")
 	`shc' "kazakhstan" if `shn'"kazak")
 	`shc' "jordan" if `shn'"jordan")
 	`shc' "kenya" if `shn'"kenya|british.?east.?africa|east.?africa.?prot")
-	`shc' "northkorea" if `shn'"korea.*people|dprk|d.p.r.k|korea.+(d.p.r|dpr|north|dem.*rep.*)|(d.p.r|dpr|north|dem.*rep.*).+korea")
-	`shc' "southkorea" if `shn'"^(?!.*d.*p.*r)(?!.*democrat)(?!.*dem.*rep)(?!.*people)(?!.*north).*korea(?!.*d.*p.*r)(?!.*dem.*rep)")
+	`shc' "northkorea" if `shn'"korea.*people|dprk|d.p.r.k|korea.+(d.p.r|dpr|north)|(d.p.r|dpr|north).+korea")
+	`shc' "southkorea" if `shn'"^(?!.*d.*p.*r)(?!.*democrat)(?!.*people)(?!.*north).*korea(?!.*d.*p.*r)(?!.*north)")
 	`shc' "kuwait" if `shn'"kuwait")
 	`shc' "kyrgyzstan" if `shn'"kyrgyz|kirghiz")
 	`shc' "laos" if `shn'"lao")
@@ -376,7 +402,7 @@ if `anymiss'==1 {
 	`shc' "qatar" if `shn'"qatar")
 	`shc' "réunion" if `shn'"r(e|é)union")
 	`shc' "romania" if `shn'"r(o|u|ou)mania")
-	`shc' "russia" if `shn'"russia|soviet.?union|u\.?s\.?s\.?r|socialist.?republics")
+	`shc' "russia" if `shn'"russia|soviet.?union|u\.?s\.?s\.?r|socialist.?republics") & !`shn'"prussia")
 	`shc' "rwanda" if `shn'"rwanda")
 	`shc' "saintbarthélemy" if `shn'"barth(e|é)lemy")
 	`shc' "sainthelena" if `shn'"helena")
@@ -395,7 +421,7 @@ if `anymiss'==1 {
 	`shc' "sierraleone" if `shn'"sierra")
 	`shc' "singapore" if `shn'"singapore")
 	`shc' "slovakia" if `shn'"^(?!.*cze).*slovak")
-	`shc' "vietnam" if `shn'"^(?!south)(?!republic).*viet.?nam(?!.*south)|democratic.republic.of.vietnam|socialist.republic.of.viet.?nam|north.viet.?nam|viet.?nam.north")
+	`shc' "vietnam" if `shn'"^(?!south).*viet.?nam(?!.*south)|democratic.vietnam|socialist.viet.?nam|north.viet.?nam|viet.?nam.north")
 	`shc' "slovenia" if `shn'"slovenia")
 	`shc' "somalia" if `shn'"somalia")
 	`shc' "southafrica" if `shn'"south") & `shn'"afric")
@@ -403,14 +429,14 @@ if `anymiss'==1 {
 	`shc' "spain" if `shn'"spain")
 	`shc' "southsudan" if `shn'"sudan") & `shn'"south")
 	`shc' "sudan" if `shn'"^(?!.*s(?!u)).*sudan") & !`shn'"south")
-	`shc' "westernsahara" if `shn'"western.sahara")
+	`shc' "westernsahara" if `shn'"western") & `shn'"sahara")
 	`shc' "suriname" if `shn'"surinam|dutch.?gu(y|i)ana")
 	`shc' "svalbardandjanmayen" if `shn'"svalbard")
 	`shc' "eswatini" if `shn'"swaziland|eswatini")
 	`shc' "sweden" if `shn'"sweden")
 	`shc' "switzerland" if `shn'"switz|swiss")
 	`shc' "syria" if `shn'"syria")
-	`shc' "tajikistan" if `shn'"tajik")
+	`shc' "tajikistan" if `shn'"tajik") | `shn'"tadschikistan")
 	`shc' "thailand" if `shn'"thailand|siam")
 	`shc' "togo" if `shn'"togo")
 	`shc' "tokelau" if `shn'"tokelau")
@@ -420,20 +446,20 @@ if `anymiss'==1 {
 	`shc' "tunisia" if `shn'"tunisia")
 	`shc' "turkey" if `shn'"turkey|t(ü|u)rkiye")
 	`shc' "turkmenistan" if `shn'"turkmen")
-	`shc' "turksandcaicosislands" if `shn'"turks")
+	`shc' "turksandcaicosislands" if `shn'"turks") | (`shn'"island") & `shn'"caicos"))
 	`shc' "tuvalu" if `shn'"tuvalu")
 	`shc' "uganda" if `shn'"uganda")
 	`shc' "ukraine" if `shn'"ukrain")
 	`shc' "northmacedonia" if `shn'"macedonia|fyrom")
 	`shc' "sovietunion" if `shn'"ussr")
 	`shc' "egypt" if `shn'"egypt")
-	`shc' "unitedkingdom" if `shn'"united.?kingdom|britain|^u\.?k\.?$")
+	`shc' "unitedkingdom" if `shn'"united.?kingdom|britain")
 	`shc' "guernsey" if `shn'"guernsey")
 	`shc' "jersey" if `shn'"jersey")
 	`shc' "isleman" if `shn'"isle") & `shn'"man")
 	`shc' "tanzania" if `shn'"tanzania")
-	`shc' "unitedstates" if ((`shn'"united") & `shn'"state")) | `shn'"usa")) & !(`shn'"island") | `shn'"^(?=.*bonaire).*eustatius|^(?=.*carib).*netherlands|bes.?islands"))
-	`shc' "unitedstatesvirginislands" if `shn'"virg") & `shn'"island") & !`shn'"brit") & !`shn'"uk") & !`shn'"u.k")
+	`shc' "unitedstates" if (`shn'"usa|^us$") | (`shn'"united") & `shn'"states"))) & !(`shn'"^(?=.*bonaire).*eustatius|^(?=.*carib).*netherlands|bes.?islands") | `shn'"virg") | `shn'"minor.*outlying"))
+	`shc' "unitedstatesvirginislands" if (`shn'"virg") & `shn'"isla")) & ((`shn'"united") & `shn'"states")) | !`shn'"brit|u.k"))
 	`shc' "burkinafaso" if `shn'"burkina|upper.?volta")
 	`shc' "uruguay" if `shn'"uruguay")
 	`shc' "uzbekistan" if `shn'"uzbek")
@@ -444,29 +470,49 @@ if `anymiss'==1 {
 	`shc' "yugoslavia" if `shn'"yugoslavia")
 	`shc' "zambia" if `shn'"zambia|northern.?rhodesia")
 	
-	keep if __cfill__!=""
+	// keep unique matches 
+	`gduplicates' tag __cfill__, gen(__cfill__dupl)
+	keep if __cfill__!="" & __cfill__dupl==0
+	
+	// merge gen() list for all reg ex matches
 	rename __cfill__ cntryname
+	cap rename cntryname_uc __aa_
+	local counthere = 1
 	foreach ind in `gen' {
-		if "`ind'"!="cntryname" merge m:1 cntryname using "`c(sysdir_plus)'i/isocodes.dta", nogen keepusing(`ind') keep(1 3)
+		if `counthere'==1 local addogcntryname cntryname_uc
+		if `counthere'!=1 local addogcntryname
+		if "`ind'"!="cntryname" local addogcntryname `addogcntryname' `ind'
+		if "`addogcntryname'"!="" merge m:1 cntryname using "`c(sysdir_plus)'i/isocodes.dta", nogen keepusing(`addogcntryname') keep(1 3)
+		local ++counthere
 	}
+	
+	// report reg ex matches 
+	rename cntryname_uc _MatchedCountry_
+	cap rename __aa_ cntryname_uc 
 	noisily di "The following strings were matched with a degree of uncertainty. Please check if this is correct."
-	rename __ogcountry OriginalVar
-	noisily list OriginalVar `gen'
-	drop OriginalVar
+	rename __ogcountry _InputString_
+	noisily list _InputString_ _MatchedCountry_
+	drop _InputString_ _MatchedCountry_
+	
+	// store reg ex matches and merge them to matches from above
 	foreach ind in `gen' {
 		rename `ind' `ind'_regex
 		local regexkeep `regexkeep' `ind'_regex
 	}
 	save `__fillup', replace 
 	use `__ogdata', clear
-	merge 1:1 `varlist' using `__fillup', nogen keepusing(`regexkeep') keep(1 3)
+	merge m:1 `varlist' using `__fillup', nogen keepusing(`regexkeep') keep(1 3)
 	foreach ind in `gen' {
 		replace `ind' = `ind'_regex if mi(`ind') & !mi(`ind'_regex)
 		drop `ind'_regex
 	}
 }
 
-// fill up further from other gen() variables
+*-------------------------------------------------------------------------------
+* finalize match dataset
+*-------------------------------------------------------------------------------
+
+// match remaining missings based on other gen() variables
 if wordcount("`gen'")>1 {
 	foreach ind in `gen' {
 		count if mi(`ind')
@@ -475,7 +521,7 @@ if wordcount("`gen'")>1 {
 			rename `ind' `ind'_temp
 			local not_`ind' = subinstr("`gen'","`ind'","",.)
 			foreach notind in `not_`ind'' {
-				merge 1:m `notind' using "`c(sysdir_plus)'i/isocodes.dta", nogen keepusing(`ind') keep(1 3)
+				merge m:m `notind' using "`c(sysdir_plus)'i/isocodes.dta", nogen keepusing(`ind') keep(1 3)
 				replace `ind'_temp = `ind' if mi(`ind'_temp) & !mi(`ind')
 				drop `ind'
 			}
@@ -484,13 +530,12 @@ if wordcount("`gen'")>1 {
 	}
 }
 
-// capitalize strings for cntryname 
+// capitalize strings
 if strpos("`gen'","cntryname") {
-	merge 1:m cntryname using "`c(sysdir_plus)'i/isocodes.dta", nogen keepusing(cntryname_uc) keep(1 3)
+	merge m:m cntryname using "`c(sysdir_plus)'i/isocodes.dta", nogen keepusing(cntryname_uc) keep(1 3)
 	drop cntryname
 	rename cntryname_uc cntryname
 }
-
 if strpos("`gen'","iso2c") | strpos("`gen'","iso3c") {
 	foreach ind in `gen' {
 		if !inlist("`ind'","iso3n","cntryname") {
@@ -510,12 +555,13 @@ foreach ind in `gen' {
 	}
 }
 
-
 *-------------------------------------------------------------------------------
 * restrict sample
 *-------------------------------------------------------------------------------
 
 if "`keepiso3c'`keepiso2c'`keepiso3n'`keepregion'"!="" {
+	
+	gen __keeeep__ = .
 	
 	if "`keepregion'"!="" {
 		local __oecd_countries__ 36 40 56 124 152 203 208 233 246 250 276 300 348 352 372 ///
@@ -525,27 +571,8 @@ if "`keepiso3c'`keepiso2c'`keepiso3n'`keepregion'"!="" {
 		428 440 442 470 528 616 620 642 703 705 724 752 826
 		
 		local __emu_countries__ 40 56 196 233 246 250 276 300 372 380 428 442 470 528 620 703 705 724
-		
-		local __africa_countries__ 12 24 72 86 108 120 132 140 148 174 175 178 180 204 226 ///
-		231 232 260 262 266 270 288 324 384 404 426 430 434 450 454 466 478 480 504 508 516 562 ///
-		566 624 638 646 654 678 686 690 694 706 710 716 728 729 732 748 768 788 800 818 834 854 894
-		
-		local __america_countries__ 28 32 44 52 60 68 74 76 84 92 124 136 152 170 188 192 212 214 ///
-		218 222 238 239 254 304 308 312 320 328 332 340 388 474 484 500 531 533 534 535 558 591 600 ///
-		604 630 652 659 660 662 663 666 670 740 780 796 840 850 858 862
-		
-		local __asia_countries__ 4 31 48 50 51 64 96 104 116 144 156 196 268 275 344 356 360 ///
-		364 368 376 392 398 400 408 410 414 417 418 422 446 458 462 496 512 524 586 608 626 634 ///
-		682 702 704 760 762 764 784 792 795 860 887
-		
-		local __europe_countries__ 8 20 40 56 70 100 112 191 203 208 233 234 246 248 250 276 292 300 ///
-		336 348 352 372 380 428 438 440 442 470 492 498 499 528 578 616 620 642 643 674 688 703 705 ///
-		724 744 752 756 804 807 826 831 832 833
-		
-		local __oceania_countries__ 16 36 90 162 166 184 242 258 296 316 334 520 540 548 554 570 574 ///
-		580 581 583 584 585 598 612 772 776 798 876 882
 
-		gen __keeeep__ = 0
+		
 		foreach utut in `keepregion' {
 			foreach lklk of local __`utut'_countries__ {
 				replace __keeeep__ = 1 if iso3n==`lklk'
@@ -554,36 +581,25 @@ if "`keepiso3c'`keepiso2c'`keepiso3n'`keepregion'"!="" {
 	}
 
 	if "`keepiso3n'"!="" {
-		cap confirm variable __keeeep__
-		if _rc gen __keeeep__ = .
 		foreach lklkl of numlist `keepiso3n' {
 			replace __keeeep__ = 1 if iso3n==`lklkl'
 		}
 	}
 
 	if "`keepiso2c'"!="" {
-		cap confirm variable __keeeep__
-		if _rc gen __keeeep__ = .
 		foreach lklkl in `keepiso2c' {
 			replace __keeeep__ = 1 if iso2c=="`lklkl'"
 		}
 	}
 
 	if "`keepiso3c'"!="" {
-		cap confirm variable __keeeep__
-		if _rc gen __keeeep__ = .
 		foreach lklkl in `keepiso3c' {
 			replace __keeeep__ = 1 if iso3c=="`lklkl'"
 		}
 	}
+	
+	local gen `oggen'
 
-	count if __keeeep__!=1 
-	local __keeeep__count = r(N)
-	if `__keeeep__count'>0 {
-		`lvlsof' `varlist' if __keeeep__!=1, local(_asd) clean separate(; )
-		noisily di `__keeeep__count' " countries are dropped by the keep options: `_asd'"
-		drop if __keeeep__!=1 
-	}
 }
 
 *-------------------------------------------------------------------------------
@@ -597,21 +613,34 @@ if strpos("`gen'","iso3n") & "`nolabel'"=="" {
 }
 
 *-------------------------------------------------------------------------------
-* merge back to dataset, sort & order
+* merge back to original dataset, sort & order, report
 *-------------------------------------------------------------------------------
 
+// finalize merged data
 if "`keepiso3c'`keepiso2c'`keepiso3n'`keepregion'"!="" local __keeploc __keeeep__
 drop `varlist'
 rename __ogcountry `varlist'
 keep `varlist' `gen' `__keeploc'
 tempfile cmerge 
 save `cmerge', replace 
+
+// merge to original data
 restore
 merge m:1 `varlist' using `cmerge', nogen keepusing(`gen' `__keeploc') keep(1 3)
+
+// report on dropped countries
 if "`keepiso3c'`keepiso2c'`keepiso3n'`keepregion'"!="" {
-	keep if __keeeep__==1 
+	count if __keeeep__!=1 
+	local __keeeep__count = r(N)
+	if `__keeeep__count'>0 {
+		`lvlsof' `varlist' if __keeeep__!=1, local(_asd) clean separate(; )
+		noisily di `__keeeep__count' " countries are dropped by the keep options: `_asd'"
+		drop if __keeeep__!=1 
+	}
 	drop __keeeep__
 }
+
+// sort & order
 order `varlist' `gen'
 if "`nosort'"=="" {
 	foreach __time__ in qyear year quarter month day {
@@ -621,16 +650,17 @@ if "`nosort'"=="" {
 	gsort `varlist' `isocodesyear'
 }
 
-*-------------------------------------------------------------------------------
-* report missings
-*-------------------------------------------------------------------------------
-
+// report non-matches
 foreach ind in `gen' {
 	if ``ind'miss'>0 {
 		`lvlsof' `varlist' if mi(`ind'), local(_ztrw) clean separate(; )
 		noisily di "`ind' codes could not be assigned to ``ind'miss' countries: `_ztrw'"
 	}
 }
+
+
+
+
 
 
 
