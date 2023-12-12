@@ -633,7 +633,7 @@ if "`keepiso3c'`keepiso2c'`keepiso3n'`keepregion'"!="" {
 	count if __keeeep__!=1 
 	local __keeeep__count = r(N)
 	if `__keeeep__count'>0 {
-		`lvlsof' `varlist' if __keeeep__!=1, local(_asd) clean separate(; )
+		`lvlsof' `varlist' if __keeeep__!=1, local(_asd) clean separate(", ")
 		noisily di "Countries dropped by the keep options: `_asd'"
 		drop if __keeeep__!=1 
 	}
@@ -653,7 +653,7 @@ if "`nosort'"=="" {
 // report non-matches
 foreach ind in `gen' {
 	if ``ind'miss'>0 {
-		`lvlsof' `varlist' if mi(`ind'), local(_ztrw) clean separate(; )
+		`lvlsof' `varlist' if mi(`ind'), local(_ztrw) clean separate(", ")
 		noisily di "`ind' codes could not be assigned to the following countries: `_ztrw'"
 	}
 }
