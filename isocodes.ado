@@ -489,7 +489,7 @@ if `anymiss'==1 {
 	// report reg ex matches 
 	rename cntryname_uc _MatchedCountry_
 	cap rename __aa_ cntryname_uc 
-	noisily di "The following strings were matched with a degree of uncertainty. Please check if this is correct."
+	noisily di "The following strings were matched with some uncertainty. Please check if the matches are correct."
 	rename __ogcountry _InputString_
 	noisily list _InputString_ _MatchedCountry_
 	drop _InputString_ _MatchedCountry_
@@ -634,7 +634,7 @@ if "`keepiso3c'`keepiso2c'`keepiso3n'`keepregion'"!="" {
 	local __keeeep__count = r(N)
 	if `__keeeep__count'>0 {
 		`lvlsof' `varlist' if __keeeep__!=1, local(_asd) clean separate(; )
-		noisily di `__keeeep__count' " countries are dropped by the keep options: `_asd'"
+		noisily di "Countries dropped by the keep options: `_asd'"
 		drop if __keeeep__!=1 
 	}
 	drop __keeeep__
@@ -654,7 +654,7 @@ if "`nosort'"=="" {
 foreach ind in `gen' {
 	if ``ind'miss'>0 {
 		`lvlsof' `varlist' if mi(`ind'), local(_ztrw) clean separate(; )
-		noisily di "`ind' codes could not be assigned to ``ind'miss' countries: `_ztrw'"
+		noisily di "`ind' codes could not be assigned to the following countries: `_ztrw'"
 	}
 }
 
