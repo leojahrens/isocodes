@@ -5,7 +5,8 @@ d Leo Ahrens, University of Konstanz
 d
 d Requires Stata 15 and the following packages: gtools
 d
-d Distribution-Date: 20231210
+d Distribution-Date: 20231212
 d Support: leo@ahrensmail.de
 f isocodes.ado 
 f isocodes.dta
+f isocodes.sthlp
