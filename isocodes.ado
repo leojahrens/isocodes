@@ -56,10 +56,10 @@ else {
 }
 
 // get current version of the country strings dataset 
-cap describe using "C:\Forschung\Leo Stata Files\isocodes ado/isocodes.dta", short varl
+cap describe using "`c(sysdir_plus)'i/isocodes.dta", short varl
 local ccodes_data_varl = r(varlist)
 if _rc | !strpos("`ccodes_data_varl'","version2") {
-	net set other C:\Forschung\Leo Stata Files\isocodes ado
+	net set other "`c(sysdir_plus)'i"
 	net get isocodes, from("https://raw.githubusercontent.com/leojahrens/isocodes/master") replace
 }
 
@@ -120,7 +120,7 @@ local __cname__ "`varlist'"
 foreach __cvar__ in `countrylist__' {
 	if "`__cvar__'"!="`gen'" {
 		rename `__cname__' `__cvar__'
-		merge m:m `__cvar__' using "$cpath/isocodes.dta", nogen keepusing(`gen') keep(1 3)
+		merge m:m `__cvar__' using "`c(sysdir_plus)'i/isocodes.dta", nogen keepusing(`gen') keep(1 3)
 		foreach ind in `gen' {
 			if "`__cvar__'"!="`ind'" {
 				if "`ind'"=="iso3n" {
@@ -483,7 +483,7 @@ if `anymiss'==1 {
 		if `counthere'==1 local addogcntryname cntryname_uc
 		if `counthere'!=1 local addogcntryname
 		if "`ind'"!="cntryname" local addogcntryname `addogcntryname' `ind'
-		if "`addogcntryname'"!="" merge m:1 cntryname using "$cpath/isocodes.dta", nogen keepusing(`addogcntryname') keep(1 3)
+		if "`addogcntryname'"!="" merge m:1 cntryname using "`c(sysdir_plus)'i/isocodes.dta", nogen keepusing(`addogcntryname') keep(1 3)
 		local ++counthere
 	}
 	
@@ -522,7 +522,7 @@ if wordcount("`gen'")>1 {
 			rename `ind' `ind'_temp
 			local not_`ind' = subinstr("`gen'","`ind'","",.)
 			foreach notind in `not_`ind'' {
-				merge m:m `notind' using "$cpath/isocodes.dta", nogen keepusing(`ind') keep(1 3)
+				merge m:m `notind' using "`c(sysdir_plus)'i/isocodes.dta", nogen keepusing(`ind') keep(1 3)
 				replace `ind'_temp = `ind' if mi(`ind'_temp) & !mi(`ind')
 				drop `ind'
 			}
@@ -533,7 +533,7 @@ if wordcount("`gen'")>1 {
 
 // capitalize strings
 if strpos("`gen'","cntryname") {
-	merge m:m cntryname using "$cpath/isocodes.dta", nogen keepusing(cntryname_uc) keep(1 3)
+	merge m:m cntryname using "`c(sysdir_plus)'i/isocodes.dta", nogen keepusing(cntryname_uc) keep(1 3)
 	drop cntryname
 	rename cntryname_uc cntryname
 }
