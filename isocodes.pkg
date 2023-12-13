@@ -3,7 +3,7 @@ d isocodes. Matches standardized country codes
 d
 d Leo Ahrens, University of Konstanz
 d
-d Requires Stata 15 and the following packages: gtools
+d Requires Stata 14 and the following packages: gtools
 d
 d Distribution-Date: 20231212
 d Support: leo@ahrensmail.de
