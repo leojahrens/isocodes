@@ -1,4 +1,4 @@
-*! version 1.1   Leo Ahrens   leo@ahrensmail.de
+*! version 1.2   Leo Ahrens   leo@ahrensmail.de
 
 program define isocodes
 version 14.0
@@ -58,7 +58,7 @@ else {
 // get current version of the country strings dataset 
 cap describe using "`c(sysdir_plus)'i/isocodes.dta", short varl
 local ccodes_data_varl = r(varlist)
-if _rc | !strpos("`ccodes_data_varl'","version2") {
+if _rc | !strpos("`ccodes_data_varl'","version3") {
 	net set other "`c(sysdir_plus)'i"
 	net get isocodes, from("https://raw.githubusercontent.com/leojahrens/isocodes/master") replace
 }
@@ -104,7 +104,7 @@ keep `varlist' __ogcountry
 *-------------------------------------------------------------------------------
 
 // list of variables in attached dataset
-local countrylist__ cntryname iso2c iso3c wb3c wb2c penn cow unctad marc eurostat ecb unhcr ioc name2 name3 name4 name5 name6 name7 cntryname_copy
+local countrylist__ cntryname iso2c iso3c wb3c wb2c ifs penn eurostat ecb cow unctad marc  unhcr ioc name2 name3 name4 name5 name6 name7 cntryname_copy
 
 // extend gen() list if further vars are required for keepx()
 if "`keepregion'`keepiso3n'`keepiso3c'`keepiso2c'"!="" {
@@ -255,11 +255,11 @@ if `anymiss'==1 {
 	`shc' "canada" if `shn'"canada")
 	`shc' "caboverde" if `shn'"verde")
 	`shc' "caymanislands" if `shn'"cayman")
-	`shc' "centralafrican" if `shn'"centra") & `shn'"afric")
+	`shc' "centralafrican" if `shn'"central") & `shn'"african") & !`shn'"economic|monetary|north|south|east")
 	`shc' "srilanka" if `shn'"sri.?lanka|ceylon")
 	`shc' "chad" if `shn'"chad")
 	`shc' "chile" if `shn'"chile")
-	`shc' "china" if `shn'"china") & !`shn'"taiw|hongmaca")
+	`shc' "china" if `shn'"china") & !`shn'"taiw|hongmaca|commodity|emde")
 	`shc' "taiwan" if `shn'"taiwan|taipei|formosa")
 	`shc' "christmasisland" if `shn'"christmas")
 	`shc' "cocosislands" if `shn'"cocos|keeling")
@@ -370,9 +370,9 @@ if `anymiss'==1 {
 	`shc' "nepal" if `shn'"nepal")
 	`shc' "netherlands" if `shn'"^(?!.*ant)(?!.*carib).*netherlands|holland")
 	`shc' "netherlandsantilles" if `shn'"netherlands.antil|dutch.antil")
-	`shc' "curaçao" if `shn'"^(?!.*bonaire).*cura(c|ç)ao")
+	`shc' "curaçao" if `shn'"^(?!.*bonaire).*cura(c|ç)ao") & !`shn'"maarten")
 	`shc' "aruba" if `shn'"^(?!.*bonaire).*aruba")
-	`shc' "sintmaarten" if `shn'"^(?!.*martin)(?!.*saba).*maarten")
+	`shc' "sintmaarten" if `shn'"maarten") & !`shn'"martin|saba|cura(c|ç)ao")
 	`shc' "bonairesinteustatiusandsaba" if `shn'"^(?=.*bonaire).*eustatius|^(?=.*carib).*netherlands|bes.?islands")
 	`shc' "newcaledonia" if `shn'"new.?caledonia")
 	`shc' "vanuatu" if `shn'"vanuatu|new.?hebrides")
@@ -390,7 +390,7 @@ if `anymiss'==1 {
 	`shc' "palau" if `shn'"palau")
 	`shc' "pakistan" if `shn'"^(?!.*east).*paki?stan")
 	`shc' "panama" if `shn'"panama")
-	`shc' "papuanewguinea" if `shn'"papua|new.?guinea")
+	`shc' "papuanewguinea" if `shn'"papua|new.?guinea|pnguinea")
 	`shc' "paraguay" if `shn'"paraguay")
 	`shc' "peru" if `shn'"peru")
 	`shc' "philippines" if `shn'"philippines")
@@ -425,7 +425,7 @@ if `anymiss'==1 {
 	`shc' "vietnam" if `shn'"^(?!south).*viet.?nam(?!.*south)|democratic.vietnam|socialist.viet.?nam|north.viet.?nam|viet.?nam.north")
 	`shc' "slovenia" if `shn'"slovenia")
 	`shc' "somalia" if `shn'"somalia")
-	`shc' "southafrica" if `shn'"south") & `shn'"afric")
+	`shc' "southafrica" if ((`shn'"south(?!e)") & `shn'"afric")) | `shn'"safrica")) & !`shn'"west|economic|monetary|north|east")
 	`shc' "zimbabwe" if `shn'"zimbabwe|^(?!.*northern).*rhodesia")
 	`shc' "spain" if `shn'"spain")
 	`shc' "southsudan" if `shn'"sudan") & `shn'"south")
