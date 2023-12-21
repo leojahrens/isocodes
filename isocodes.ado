@@ -1,4 +1,4 @@
-*! version 1.3   Leo Ahrens   leo@ahrensmail.de
+*! version 1.3.1   Leo Ahrens   leo@ahrensmail.de
 
 program define isocodes
 version 14.0
@@ -477,7 +477,7 @@ if "`anymiss'"=="yes" {
 	`shc' "zambia" if `shn'"zambia|northern.?rhodesia")
 	
 	// mark likely region/aggregate observations
-	replace __maybewrong = 1 if `shn'"monetary|economic|economies|import|average|total|world|developing|industrialia") | (`shn'"income") & `shn'"high|mid|low"))
+	replace __maybewrong = 1 if __cfill__!="" & (`shn'"monetary|economic|economies|import|average|total|world|developing|industrialia") | (`shn'"income") & `shn'"high|mid|low")))
 	`shc' "" if `shn'"monetary|economic|economies|import|average|total|world|developing|industrialia") | (`shn'"income") & `shn'"high|mid|low"))
 	count if __maybewrong==1 
 	if r(N)>0 local onewrong = "yes"
@@ -579,8 +579,7 @@ if "`keepiso3c'`keepiso2c'`keepiso3n'`keepregion'"!="" {
 		428 440 442 470 528 616 620 642 703 705 724 752 826
 		
 		local __emu_countries__ 40 56 196 233 246 250 276 300 372 380 428 442 470 528 620 703 705 724
-
-		
+	
 		foreach utut in `keepregion' {
 			foreach lklk of local __`utut'_countries__ {
 				replace __keeeep__ = 1 if iso3n==`lklk'
@@ -719,7 +718,7 @@ count if __nonm==0
 if r(N)>0 {
 	`lvlsof' `varlist' if __nonm==0 `addthos', local(_remmiss) clean separate(", ")
 	noisily dis "------"
-	noisily dis "The following observations of the input variable {it:`varlist'} couldn't be matched: `_remmiss'"
+	noisily dis "The following observations of {it:`varlist'} couldn't be matched: `_remmiss'"
 	noisily di "Remember that isocodes only covers countries in ISO3166."	
 }
 cap drop __nonm
